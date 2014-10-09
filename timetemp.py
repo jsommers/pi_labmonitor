@@ -99,12 +99,11 @@ def light_reading():
             reading += 1
     return reading
 
-def read_temp_raw(self):
+def read_temp_raw():
     base_dir = '/sys/bus/w1/devices/'
     try:
         device_folder = glob.glob(base_dir + '28*')[0]
     except:
-        self.set_status("No temperature device found")
         return ''
     device_file = device_folder + '/w1_slave'
     f = open(device_file, 'r')
@@ -112,15 +111,15 @@ def read_temp_raw(self):
     f.close()
     return lines
 
-def read_temp(self):
-    lines = self.read_temp_raw()
+def read_temp():
+    lines = read_temp_raw()
     if not lines:
         # it no workie --- no temperature found
         return 0.0,0.0
 
     while lines[0].strip()[-3:] != 'YES':
         time.sleep(0.2)
-        lines = self.read_temp_raw()
+        lines = read_temp_raw()
         equals_pos = lines[1].find('t=')
         if equals_pos != -1:
             temp_string = lines[1][equals_pos+2:]
@@ -163,7 +162,7 @@ def nethandler():
 
         if newsock:
             print ("Got connection from {}:{}".format(*remote_addr))
-            xdata = read_data(debug=True)
+            xdata = read_data(debug=False)
             # print ("Sending <{}>".format(str(xdata)))
             newsock.sendall(xdata.encode('utf-8'))
             newsock.close()

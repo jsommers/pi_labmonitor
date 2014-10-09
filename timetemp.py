@@ -1,7 +1,5 @@
 #/usr/bin/env python3
 
-from tkinter import *
-from tkinter.ttk import *
 import time
 import os
 import glob
@@ -9,140 +7,181 @@ import sys
 import socket
 import threading
 import json
+import atexit
 import signal
 
-class Application(Frame):
-    def __init__(self, master=None):
-        Frame.__init__(self, master)
-        self.__master = master
-        self.pack()
-        self.createWidgets()
-        self.__running = True
-        self.__time = '00:00:00'
-        self.__temp = (0.0, 0.0)
+class FakeGPIO(object):
+    BCM = LOW = HIGH = IN = OUT = 0
 
-    def isRunning(self):
-        return self.__running
+    def __init__(self):
+        pass
 
-    def read_temp_raw(self):
-        base_dir = '/sys/bus/w1/devices/'
-        try:
-            device_folder = glob.glob(base_dir + '28*')[0]
-        except:
-            self.set_status("No temperature device found")
-            return ''
-        device_file = device_folder + '/w1_slave'
-        f = open(device_file, 'r')
-        lines = f.readlines()
-        f.close()
-        return lines
+    def output(*args):
+        pass
 
-    def read_temp(self):
+    def input(*args):
+        pass 
+
+    def setmode(*args):
+        pass
+
+    def setup(*args):
+        pass
+
+    def cleanup(*args):
+        pass
+
+
+try:
+    import RPi.GPIO as GPIO
+except:
+    GPIO = FakeGPIO()
+    print ("Warning: Can't import RPi.GPIO.  I hope you're just testing...")
+
+
+GREEN = 18
+RED = 23
+BLUE = 25
+LIGHT = 22
+
+def clear_led():
+    GPIO.output(GREEN, False)
+    GPIO.output(RED, False)
+    GPIO.output(BLUE, False)
+
+def led_stripe():
+    colors = [ GREEN, RED, BLUE ]
+    setting = [ True, False, False ]
+    for i in range(15):
+        for i,c in enumerate(colors):
+            GPIO.output(c, setting[i])
+        setting.append(setting.pop(0))
+        time.sleep(0.01)
+
+def led_flash():
+    colors = [ GREEN, RED, BLUE ]
+    setting = True
+    for i in range(13):
+        for c in colors:
+            GPIO.output(c, setting)
+        setting = not setting
+        time.sleep(0.01)
+
+def update_led(ledstate, counter):
+    # print ("Update LED {} {}".format(ledstate,counter))
+    if counter % 13 == 0:
+        led_stripe()
+    elif counter % 101 == 0:
+        led_flash()
+
+    GPIO.output(GREEN, ledstate[GREEN])
+    GPIO.output(RED, ledstate[RED])
+    GPIO.output(BLUE, ledstate[BLUE])
+
+    ledstate[GREEN] = ledstate[RED] = ledstate[BLUE] = False
+
+    if counter % 3 == 0:
+        ledstate[GREEN] = True
+    elif counter % 3 == 1:
+        ledstate[RED] = True
+    else:
+        ledstate[BLUE] = True
+
+def light_reading():
+    reading = 0
+    GPIO.setup(LIGHT, GPIO.OUT)
+    GPIO.output(LIGHT, GPIO.LOW)
+    time.sleep(0.1)
+
+    GPIO.setup(LIGHT, GPIO.IN)
+    # This takes about 1 millisecond per loop cycle
+    while (GPIO.input(LIGHT) == GPIO.LOW):
+            reading += 1
+    return reading
+
+def read_temp_raw(self):
+    base_dir = '/sys/bus/w1/devices/'
+    try:
+        device_folder = glob.glob(base_dir + '28*')[0]
+    except:
+        self.set_status("No temperature device found")
+        return ''
+    device_file = device_folder + '/w1_slave'
+    f = open(device_file, 'r')
+    lines = f.readlines()
+    f.close()
+    return lines
+
+def read_temp(self):
+    lines = self.read_temp_raw()
+    if not lines:
+        # it no workie --- no temperature found
+        return 0.0,0.0
+
+    while lines[0].strip()[-3:] != 'YES':
+        time.sleep(0.2)
         lines = self.read_temp_raw()
-        if not lines:
-            # it no workie --- no temperature found
-            return 0.0,0.0
+        equals_pos = lines[1].find('t=')
+        if equals_pos != -1:
+            temp_string = lines[1][equals_pos+2:]
+            temp_c = float(temp_string) / 1000.0
+            temp_f = temp_c * 9.0 / 5.0 + 32.0
+            return temp_c, temp_f
 
-        while lines[0].strip()[-3:] != 'YES':
-            time.sleep(0.2)
-            lines = self.read_temp_raw()
-            equals_pos = lines[1].find('t=')
-            if equals_pos != -1:
-                temp_string = lines[1][equals_pos+2:]
-                temp_c = float(temp_string) / 1000.0
-                temp_f = temp_c * 9.0 / 5.0 + 32.0
-                return temp_c, temp_f
+def read_data(debug=False):
+    light = 100
+    temp = (10.0, 50.0)
+    if not debug:
+        light = light_reading()
+        temp = read_temp()
+    return json.dumps({'light':light, 'temperature':temp})
 
-    def createWidgets(self):
-        style = Style()
-        style.configure("TIME.TLabel", foreground="black", background="white", padding=10, relief="flat")
-        style.configure("TEMP.TLabel", foreground="red", background="white", padding=10, relief="flat")
-        style.configure("STAT.TLabel", foreground="blue", background="white", padding=5, relief="flat")
-
-        self.status = Label(self, style="STAT.TLabel")
-        self.status['font'] = 'Helvetica 14'
-        self.set_status('all is well')
-
-        self.time = Label(self, style="TIME.TLabel")
-        self.time['font'] = 'courier 36 bold'
-        self.update_time()
-        self.time.pack(side="top")
-
-        self.temp = Label(self, style="TEMP.TLabel")
-        self.temp['font'] = 'courier 36 bold'
-        self.update_temp()
-        self.temp.pack(side="top")
-
-        self.status.pack(side='top')
-
-        self.QUIT = Button(self, text="exit", command=self.stop)
-        self.QUIT.pack(side="bottom")
-
-    def stop(self):
-        self.__master.destroy()
-        self.__running = False
-
-    def update_time(self):
-        currtime = time.localtime()
-        self.__time = '{:02d}:{:02d}:{:02d}'.format(currtime.tm_hour, currtime.tm_min, currtime.tm_sec)
-        self.time['text'] = self.__time
-
-    def update_temp(self):
-        self.__temp = self.read_temp()
-        self.temp['text'] = '{:2.02f}\u00B0C / {:2.02f}\u00B0F'.format(self.__temp[0], self.__temp[1])
-
-    def set_status(self, text):
-        self.status['text'] = text
-
-    def update_all(self):
-        if not self.__running:
-            return
-        self.update_time()
-        self.update_temp()
-        if self.__running:
-            self.after(1000, self.update_all)
-
-    def get_data(self):
-        return json.dumps({
-            'time':self.__time,
-            'celcius':self.__temp[0],
-            'fahrenheit':self.__temp[1],
-        })
-
-def nethandler(theapp):
+def nethandler():
     sock = socket.socket() # defaults to TCP
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('0.0.0.0', 7890))
     sock.listen(1)
     sock.settimeout(0.5)
-    while theapp.isRunning():
+
+    ledstate = { RED: False, GREEN: False, BLUE: False }
+    counter = 0
+
+    while True:
+        counter += 1
+        timeout = False
+        newsock = None
+
         try:
             (newsock, remote_addr) = sock.accept()
         except socket.timeout:
-            continue  
+            timeout = True
+        except KeyboardInterrupt:
+            break
+
+        if timeout:
+            update_led(ledstate, counter)
 
         if newsock:
-            # print ("Got connection from {}:{}".format(*remote_addr))
-            xdata = theapp.get_data()
+            print ("Got connection from {}:{}".format(*remote_addr))
+            xdata = read_data(debug=True)
             # print ("Sending <{}>".format(str(xdata)))
             newsock.sendall(xdata.encode('utf-8'))
             newsock.close()
             newsock = None
 
+    sock.close()
 
-root = Tk()
-app = Application(master=root)
-app.master.title("pi temperature monitor")
-app.master.maxsize(400, 400)
-root.after(1000, app.update_all)
+def shutdown(*args):
+    print ("Cleaning up.")
+    clear_led()
+    GPIO.cleanup()
 
-def halt(*args):
-    global app
-    app.stop()
-signal.signal(signal.SIGINT, halt)
+if __name__ == '__main__':
+    GPIO.setmode(GPIO.BCM)
 
-netthread = threading.Thread(target=nethandler, args=(app,))
-netthread.start()
-app.mainloop()
-netthread.join()
+    GPIO.setup(GREEN, GPIO.OUT)
+    GPIO.setup(RED, GPIO.OUT)
+    GPIO.setup(BLUE, GPIO.OUT)
 
+    atexit.register(shutdown)
+    nethandler()

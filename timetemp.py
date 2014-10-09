@@ -3,12 +3,10 @@
 import time
 import os
 import glob
-import sys
 import socket
-import threading
 import json
 import atexit
-import signal
+import re
 
 class FakeGPIO(object):
     BCM = LOW = HIGH = IN = OUT = 0
@@ -105,11 +103,12 @@ def read_temp_raw():
         device_folder = glob.glob(base_dir + '28*')[0]
     except:
         return ''
-    device_file = device_folder + '/w1_slave'
+    # print (device_folder)
+    device_file = os.path.join(device_folder, 'w1_slave')
     f = open(device_file, 'r')
     lines = f.readlines()
     f.close()
-    return lines
+    return [ s.strip() for s in lines ]
 
 def read_temp():
     lines = read_temp_raw()
@@ -117,15 +116,18 @@ def read_temp():
         # it no workie --- no temperature found
         return 0.0,0.0
 
-    while lines[0].strip()[-3:] != 'YES':
-        time.sleep(0.2)
-        lines = read_temp_raw()
-        equals_pos = lines[1].find('t=')
-        if equals_pos != -1:
-            temp_string = lines[1][equals_pos+2:]
-            temp_c = float(temp_string) / 1000.0
-            temp_f = temp_c * 9.0 / 5.0 + 32.0
-            return temp_c, temp_f
+    if not lines[0].endswith('YES'):
+        print ("Device not ready (first line not 'YES')")
+        return 0.0,0.0
+
+    mobj = re.search('t=(\d+)$', lines[1])
+    if not mobj:
+        print ("Can't find end of line stuff")
+        return 0.0,0.0
+
+    temp_c = float(mobj.groups()[0]) / 1000.0
+    temp_f = temp_c * 9.0 / 5.0 + 32.0
+    return temp_c, temp_f
 
 def read_data(debug=False):
     light = 100
@@ -133,7 +135,7 @@ def read_data(debug=False):
     if not debug:
         light = light_reading()
         temp = read_temp()
-    return json.dumps({'light':light, 'temperature':temp})
+    return {'light':light, 'temperature':temp, 'time':time.time()}
 
 def nethandler():
     sock = socket.socket() # defaults to TCP
@@ -141,6 +143,12 @@ def nethandler():
     sock.bind(('0.0.0.0', 7890))
     sock.listen(1)
     sock.settimeout(0.5)
+
+    debug = False
+    data_interval = 5.0
+
+    xdata = read_data(debug=debug)
+    last_data = time.time()
 
     ledstate = { RED: False, GREEN: False, BLUE: False }
     counter = 0
@@ -160,11 +168,14 @@ def nethandler():
         if timeout:
             update_led(ledstate, counter)
 
+        now = time.time()
+        if (now - last_data) >= data_interval:
+            xdata = read_data(debug=debug)
+            last_data = now
+
         if newsock:
             print ("Got connection from {}:{}".format(*remote_addr))
-            xdata = read_data(debug=False)
-            # print ("Sending <{}>".format(str(xdata)))
-            newsock.sendall(xdata.encode('utf-8'))
+            newsock.sendall(json.dumps(xdata).encode('utf-8'))
             newsock.close()
             newsock = None
 

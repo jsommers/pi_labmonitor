@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>WebSocket Test</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+<script language="javascript" type="text/javascript">
+var pi_lab_monitor = function() {
+    jQuery.ajax({ 
+       url: "http://127.0.0.1:7890",
+       dataType: "json",
+       success: function(data, status, xhr) {
+           console.log("Success");
+           console.log("time: " + data.time);
+           console.log("temp: " + data.temperature);
+           console.log("light: " + data.light);
+       },
+       error: function(xhr, status, error) {
+           console.log("Error: " + status + "--" + error);
+       },
+       crossDomain: true,
+    });
+}
+jQuery(pi_lab_monitor);
+</script>  
+</head>
+<body>
+    <h2>WebSocket Test</h2>  
+    <div id="output"></div>
+</body>
+</html>

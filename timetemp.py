@@ -144,7 +144,7 @@ def nethandler():
     sock.listen(1)
     sock.settimeout(0.5)
 
-    debug = False
+    debug = True
     data_interval = 5.0
 
     xdata = read_data(debug=debug)
@@ -175,7 +175,19 @@ def nethandler():
 
         if newsock:
             print ("Got connection from {}:{}".format(*remote_addr))
-            newsock.sendall(json.dumps(xdata).encode('utf-8'))
+            data = newsock.recv(4096)
+            # print ("Got data: {}".format(data))     
+            tosend = json.dumps(xdata).encode('utf-8')
+            httpdata = '''
+HTTP/1.0 200 OK
+Access-Control-Allow-Origin: *
+Content-type: application/json
+Content-length: {}
+
+{}
+'''.format(len(tosend), tosend)
+
+            newsock.sendall(httpdata)
             newsock.close()
             newsock = None
 

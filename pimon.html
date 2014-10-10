@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>WebSocket Test</title>
+<title></title>
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 
 <script language="javascript" type="text/javascript">
@@ -11,22 +12,45 @@ var pi_lab_monitor = function() {
        url: "http://127.0.0.1:7890",
        dataType: "json",
        success: function(data, status, xhr) {
-           console.log("Success");
-           console.log("time: " + data.time);
-           console.log("temp: " + data.temperature);
-           console.log("light: " + data.light);
+           jQuery("#back").css("background-color", "green");
+           jQuery("body").css("background-color", "green");
+           jQuery("#time").html("Time: " + data.time);
+           jQuery("#time").addClass("bg-info");
+           jQuery("#temp").html("Temperature: " + data.temperature);
+           jQuery("#temp").addClass("bg-success");
+           jQuery("#light").html("Light: " + data.light);
+           jQuery("#light").addClass("bg-warning");
        },
        error: function(xhr, status, error) {
-           console.log("Error: " + status + "--" + error);
+           jQuery("#back").css("background-color", "#ff6600");
+           jQuery("body").css("background-color", "red");
+           jQuery("#time").html("Time: unknown");
+           jQuery("#time").addClass("bg-danger");
+           jQuery("#temp").html("Temperature: unknown");
+           jQuery("#temp").addClass("bg-danger");
+           jQuery("#light").html("Light: figuratively in the dark");
+           jQuery("#light").addClass("bg-danger");
        },
        crossDomain: true,
     });
 }
 jQuery(pi_lab_monitor);
+
 </script>  
 </head>
 <body>
-    <h2>WebSocket Test</h2>  
-    <div id="output"></div>
+<div id="back" class="jumbotron">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-offset-2 col-sm-8"><h2 class="text-center" id="time"></h2></div>
+    </div>
+    <div class="row">
+      <div class="col-sm-offset-2 col-sm-8"><h2 class="text-center" id="temp"></h2></div>
+    </div>
+    <div class="row">
+      <div class="col-sm-offset-2 col-sm-8"><h2 class="text-center" id="light"></h2></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>

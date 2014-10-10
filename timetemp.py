@@ -135,7 +135,7 @@ def read_data(debug=False):
     if not debug:
         light = light_reading()
         temp = read_temp()
-    return {'light':light, 'temperature':temp, 'time':time.time()}
+    return {'light':light, 'temp_c':temp[0], 'temp_f':temp[1], 'time':time.asctime()}
 
 def nethandler():
     sock = socket.socket() # defaults to TCP
@@ -144,7 +144,7 @@ def nethandler():
     sock.listen(1)
     sock.settimeout(0.5)
 
-    debug = True
+    debug = False
     data_interval = 5.0
 
     xdata = read_data(debug=debug)

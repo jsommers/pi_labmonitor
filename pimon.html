@@ -16,7 +16,7 @@ var pi_lab_monitor = function() {
            jQuery("body").css("background-color", "green");
            jQuery("#time").html("Time: " + data.time);
            jQuery("#time").addClass("bg-info");
-           jQuery("#temp").html("Temperature: " + data.temperature);
+           jQuery("#temp").html("Temperature: " + data.temp_c + "C / " + data.temp_f + "F");
            jQuery("#temp").addClass("bg-success");
            jQuery("#light").html("Light: " + data.light);
            jQuery("#light").addClass("bg-warning");

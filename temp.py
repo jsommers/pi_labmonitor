@@ -39,4 +39,5 @@ def read_temp():
     temp_f = temp_c * 9.0 / 5.0 + 32.0
     return temp_c, temp_f
 
-print (read_temp())
+c,f = read_temp()
+print ("{}C {}F".format(c, f))

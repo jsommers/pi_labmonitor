@@ -4,7 +4,8 @@
 # Must be used with GPIO 0.3.1a or later - earlier verions
 # are not fast enough!
  
-import RPi.GPIO as GPIO, time, os      
+import math, time, os
+import RPi.GPIO as GPIO
  
 DEBUG = 1
 GPIO.setmode(GPIO.BCM)
@@ -20,7 +21,19 @@ def RCtime (RCpin):
         while (GPIO.input(RCpin) == GPIO.LOW):
                 reading += 1
         return reading
+
  
-lvals = [ RCtime(22) for _ in range(10) ]
-lavg = sum(lvals) / len(lvals)
-print ("Light average: {}".format(lavg))
+lvals = [ RCtime(22) for _ in range(25) ]
+GPIO.cleanup()
+
+n = float(len(lvals))
+lavg = sum(lvals) / n
+var = (( sum([x**2 for x in lvals]) * n ) - ( sum(lvals) ** 2.0 )) / (n * (n - 1))
+
+threshold = 3000
+
+status = "off"
+if lavg >= threshold:
+    status = "on"
+
+print ("Lights are likely {} (average reading {:.1f}, sdev {:.1f})".format(status, lavg, math.sqrt(var)))

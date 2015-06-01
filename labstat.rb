@@ -93,6 +93,11 @@ pagetemplate = <<END
            <td id="lights">#{light.capitalize}
            <td class="small" colspan="4">Intensity: #{lightintensity}
     </table>
+    <div>
+      <img src="temp.png"/>
+      <img src="power.png"/>
+      <img src="light.png"/>
+    </div>
 
     <div><h6>Last update: #{lastupdate}</h6></div>
 
@@ -102,7 +107,7 @@ pagetemplate = <<END
 </html>
 END
 
-File.open("/home/jsommers/bin/pimon.html", "w") do |f|
+File.open("/home/jsommers/bin/index.html", "w") do |f|
   f.write(pagetemplate)
 end
 
@@ -110,5 +115,52 @@ File.open("/home/jsommers/bin/tempdata.txt", "a") do |f|
   f.write("#{lastupdate} #{tempcval} #{tempfval} #{totpower} #{power1} #{power2} #{power3} #{power4} #{light} #{lightintensity}\n")
 end
 
-`cp pimon.html /var/www/html/index.html`
+`/usr/bin/gnuplot plottemp.gp`
+`cp *.png /var/www/html`
+`cp index.html /var/www/html`
+
+pimon = <<END
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>clab.colgate.edu</title>
+<style>
+.big {
+  font-size: 18pt;
+}
+.med {
+  font-size: 14pt;
+}
+</style>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<body>
+
+<div id="main" class="container">
+  <div id="back" class="jumbotron">
+    <h1 class="text-center">Current conditions</h1>
+
+    <table class="table table-bordered">
+      <tr class="#{tempclass}"><th class="big">Temperature
+          <td id="temp" colspan="5" class="big"> #{temp}
+      <tr class="#{powerclass}"><th class="big">Power
+           <td id="power" class="big"> #{totpower}W
+           <td class="med">pdu1: #{power1}
+           <td class="med">pdu2: #{power2}
+           <td class="med">pdu3: #{power3}
+           <td class="med">pdu4: #{power4}
+      <tr class="#{lightclass}"><th class="big">Light
+          <td id="light" colspan="5" class="big"> #{light.capitalize} (#{lightintensity})
+    </table>
+    <div><h6>Last update: #{lastupdate}</h6></div>
+  </div>
+</div>
+</body>
+</html>
+END
+File.open("/home/jsommers/bin/pimon.html", "w") do |f|
+  f.write(pimon)
+end
+`cp pimon.html /var/www/html`
+
 File.unlink("/tmp/labstat.lock")

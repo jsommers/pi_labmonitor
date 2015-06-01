@@ -36,4 +36,4 @@ status = "off"
 if lavg >= threshold:
     status = "on"
 
-print ("Lights are likely {} (average reading {:.1f}, sdev {:.1f})".format(status, lavg, math.sqrt(var)))
+print ("Lights: likely {} (average reading {:.1f}, sdev {:.1f})".format(status, lavg, math.sqrt(var)))

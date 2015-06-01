@@ -40,4 +40,4 @@ def read_temp():
     return temp_c, temp_f
 
 c,f = read_temp()
-print ("{}C {}F".format(c, f))
+print ("Temperature: {:.1f}\u00b0C {:.1f}\u00b0F".format(c, f))
